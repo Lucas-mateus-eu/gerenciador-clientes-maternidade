@@ -1,4 +1,4 @@
-# Gerenciador de Clientes (CRM) para Processos de Salário-Maternidade
+Gerenciador de Clientes (CRM) para Processos de Salário-Maternidade
 Este é um sistema completo de CRM (Customer Relationship Management) desenvolvido como uma aplicação de página única (SPA) para gerir clientes e automatizar a geração de documentos para processos de Salário-Maternidade.
 
 O projeto foi construído para otimizar o fluxo de trabalho de escritórios de advocacia ou assessoria, centralizando todas as informações dos clientes, controlo financeiro e documentação num único local seguro e de fácil acesso.
@@ -20,9 +20,9 @@ Upload de Anexos: Sistema de upload de ficheiros (documentos, imagens) seguro pa
 
 Geração Automática de Documentos:
 
-Criação de Ficha Cadastral em PDF.
+Criação de Ficha Cadastral pronta para impressão.
 
-Criação de Contrato de Prestação de Serviços e Procuração em PDF.
+Criação de Contrato de Prestação de Serviços e Procuração prontos para impressão.
 
 Lixeira: Os clientes apagados são enviados para uma lixeira, permitindo a sua restauração ou exclusão permanente.
 
@@ -52,7 +52,7 @@ Storage.
 
 Obtenha as suas credenciais de configuração do Firebase (apiKey, authDomain, etc.).
 
-No ficheiro index.html, substitua o objeto firebaseConfig pelas suas próprias credenciais:
+No ficheiro script.js (ou no seu ficheiro principal de configuração), substitua o objeto firebaseConfig pelas suas próprias credenciais:
 
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
@@ -62,3 +62,4 @@ const firebaseConfig = {
   messagingSenderId: "SEU_MESSAGING_SENDER_ID",
   appId: "SEU_APP_ID"
 };
+
