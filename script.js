@@ -71,6 +71,32 @@ window.closeModal = function(modalId) {
     }
 }
 
+async function fetchAddress(cep) {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) {
+        return;
+    }
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+        if (data.erro) {
+            console.log('CEP não encontrado.');
+            form.querySelector('input[name="endereco"]').value = '';
+            form.querySelector('input[name="bairro"]').value = '';
+            form.querySelector('input[name="cidade"]').value = '';
+            form.querySelector('input[name="uf"]').value = '';
+        } else {
+            form.querySelector('input[name="endereco"]').value = data.logradouro;
+            form.querySelector('input[name="bairro"]').value = data.bairro;
+            form.querySelector('input[name="cidade"]').value = data.localidade;
+            form.querySelector('input[name="uf"]').value = data.uf;
+            form.querySelector('input[name="numero"]').focus();
+        }
+    } catch (error) {
+        console.error("Erro ao buscar CEP:", error);
+    }
+}
+
 function applyInputMasks() {
     const currencyInput = document.querySelector('input[name="valor_beneficio"]');
     const dateInputs = document.querySelectorAll('input[name="data_nascimento"], input[name="exp"], input[name="data_registro"], input[name="nasc_bebe"], input[name="data_adim"], input[name="data_demiss"]');
@@ -78,8 +104,9 @@ function applyInputMasks() {
     const cepInput = document.querySelector('input[name="cep"]');
     const ufInput = document.querySelector('input[name="uf"]');
     const cpfInput = document.querySelector('input[name="cpf"]');
+    const orgaoExpedidorInput = document.querySelector('input[name="orgao_expedidor"]');
     const numericOnlyInputs = document.querySelectorAll('input[name="numero"]');
-    const textInputsToCapitalize = document.querySelectorAll('input[name="nome_completo"], input[name="endereco"], input[name="bairro"], input[name="cidade"], input[name="nome_do_pai"], input[name="nome_da_mae"], input[name="natural"], input[name="nacionalidade"], input[name="profissao"], input[name="divulgador"]');
+    const textInputsToCapitalize = document.querySelectorAll('input[name="nome_completo"], input[name="endereco"], input[name="bairro"], input[name="cidade"], input[name="nome_do_pai"], input[name="nome_da_mae"], input[name="profissao"], input[name="divulgador"], input[name="nacionalidade"], input[name="natural"]');
 
     const applyMask = (input, maskFunction) => {
         if (input) input.addEventListener('input', (e) => {
@@ -117,7 +144,12 @@ function applyInputMasks() {
         return value;
     });
 
+    if (cepInput) {
+        cepInput.addEventListener('blur', (e) => fetchAddress(e.target.value));
+    }
+
     applyMask(ufInput, value => value.toUpperCase());
+    applyMask(orgaoExpedidorInput, value => value.toUpperCase());
     
     applyMask(cpfInput, value => {
         value = value.replace(/\D/g, '');
@@ -130,6 +162,12 @@ function applyInputMasks() {
     numericOnlyInputs.forEach(input => applyMask(input, value => value.replace(/\D/g, '')));
     
     textInputsToCapitalize.forEach(input => applyMask(input, value => {
+        if (input.name === 'profissao' && value.trim().toLowerCase() === 'do lar') {
+            return 'do Lar';
+        }
+        if (input.name === 'nacionalidade' && (value.trim().toLowerCase() === 'brasileira' || value.trim().toLowerCase() === 'brasileiro')) {
+            return value.toLowerCase();
+        }
         const exceptions = ['de', 'da', 'do', 'dos', 'das'];
         const singleVowelExceptions = ['a', 'e', 'o', 'u'];
         return value
@@ -320,6 +358,7 @@ function renderClients(clients) {
                 <button data-client-id="${client.id}" data-doc-type="contrato_procuracao" class="generate-btn bg-blue-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-blue-600 text-sm">Contrato e Procuração</button>
                 <button data-client-id="${client.id}" data-doc-type="somente_contrato" class="generate-btn bg-indigo-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-indigo-600 text-sm">Somente Contrato</button>
                 <button data-client-id="${client.id}" data-doc-type="procuracao" class="generate-btn bg-purple-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-purple-600 text-sm">Somente Procuração</button>
+                <button data-client-id="${client.id}" data-doc-type="procuracao_gerid" class="generate-btn bg-cyan-500 text-white font-semibold py-2 px-3 rounded-md hover:bg-cyan-600 text-sm">Procuração GERID</button>
                 <button data-client-id="${client.id}" data-client-name="${client.nome_completo}" class="delete-btn text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 ml-auto">
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                 </button>
@@ -633,6 +672,9 @@ function generateDocument(client, type) {
     } else if (type === 'procuracao') {
         modalTitle.textContent = `Procuração - ${client.nome_completo}`;
         modalContent.innerHTML = getProcuracaoHtml(client);
+    } else if (type === 'procuracao_gerid') {
+        modalTitle.textContent = `Procuração GERID - ${client.nome_completo}`;
+        modalContent.innerHTML = getProcuracaoGeridHtml(client);
     }
     docModal.classList.remove('hidden');
     docModal.classList.add('flex');
@@ -673,12 +715,13 @@ function getFichaHtml(client) {
     return `
         <h2 class="text-xl mb-6">FICHA CADASTRAL</h2>
         <div style="font-size: 11pt; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.25rem 1rem; line-height: 1.5;">
-            <p class="col-span-2"><strong>Divulgador:</strong> ${client.divulgador || ''}</p>
+            <p><strong>Divulgador:</strong> ${client.divulgador || ''}</p>
+            <p><strong>Senha CNIS:</strong> ${client.senha_cnis || ''}</p>
             ${checkBoxes}
             <p class="col-span-2"><strong>Nome Completo:</strong> ${client.nome_completo || ''}<strong>${bebeStatus}</strong></p>
             <p><strong>Data de Nascimento:</strong> ${client.data_nascimento || ''}</p>
             <p><strong>CPF:</strong> ${client.cpf || ''}</p>
-            <p><strong>RG:</strong> ${client.rg || ''}</p>
+            <p><strong>RG:</strong> ${client.rg || ''} / ${client.orgao_expedidor || ''}</p>
             <p><strong>Expedição:</strong> ${client.exp || ''}</p>
             <p><strong>NIT/PIS/PASEP:</strong> ${client.nit || ''}</p>
             <p><strong>Título de Eleitor:</strong> ${client.titulo || ''}</p>
@@ -701,8 +744,6 @@ function getFichaHtml(client) {
             <p><strong>Telefone:</strong> ${client.fone || ''}</p>
             <p class="col-span-2"><strong>E-mail:</strong> ${client.email || ''}</p>
             <hr class="col-span-2 my-2 border-t border-slate-300">
-            <p><strong>Nº Matrícula:</strong> ${client.n_matricula || ''}</p>
-            <p><strong>Senha CNIS:</strong> ${client.senha_cnis || ''}</p>
             <p><strong>Data de Admissão:</strong> ${client.data_adim || ''}</p>
             <p><strong>Data de Demissão:</strong> ${client.data_demiss || ''}</p>
             <p class="col-span-2"><strong>Tipo de Demissão:</strong> 
@@ -721,6 +762,7 @@ function getFichaHtml(client) {
             <hr class="col-span-2 my-2 border-t border-slate-300">
             <p><strong>Data Nascimento Bebê:</strong> ${client.nasc_bebe || ''}</p>
             <p><strong>Data Registro Bebê:</strong> ${client.data_registro || ''}</p>
+            <p><strong>Nº Matrícula Bebê:</strong> ${client.n_matricula || ''}</p>
             <p class="col-span-2"><strong>Saiu grávida:</strong> 
                 (${saiuGravida === 'sim' ? 'X' : '&nbsp;'}) Sim
                 (${saiuGravida === 'nao' ? 'X' : '&nbsp;'}) Não
@@ -737,7 +779,7 @@ function getSomenteContratoHtml(client) {
     return `
         <div>
             <h3 class="text-lg mb-4">CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h3>
-            <p class="mb-2"><strong>CONTRATADA:</strong> RS'MATERNIDADE, de FONE 51-99503-3982 e CNPJ 33.501.519/0001-02 estabelecida na Rua Marcilio Dias, nº 1253, sala 705, bairro centro na cidade de Novo Hamburgo-RS, CEP: 93410-177; e do outro lado a <strong>CONTRATANTE</strong>, ${client.nome_completo || ''}, ${client.nacionalidade || 'brasileira'}, ${client.estado_civil || ''}, ${client.profissao || ''}, CPF: ${client.cpf || ''}, residente na ${enderecoCompleto}.</p>
+            <p class="mb-2"><strong>CONTRATADA:</strong> RS'MATERNIDADE, de FONE 51-99503-3982 e CNPJ 33.501.519/0001-02 estabelecida na Rua Marcilio Dias, nº 1261, sala 705, bairro centro na cidade de Novo Hamburgo-RS, CEP: 93410-177; e do outro lado a <strong>CONTRATANTE</strong>, ${client.nome_completo || ''}, ${client.nacionalidade || 'brasileira'}, ${client.estado_civil || ''}, ${client.profissao || ''}, CPF: ${client.cpf || ''}, residente na ${enderecoCompleto}.</p>
             <p class="mb-2">As partes acima identificadas têm, entre si, justas e acertadas o presente Contrato de Prestação de Serviços, que se regera pelas cláusulas seguintes e pelas condições de preço, forma e termo de pagamento descrito no presente.</p>
             <p class="mb-2"><strong>CLÁUSULA 1º:</strong> É objetivo do presente contrato, a prestação de serviço do CONTRATADO para representar o contratante no encaminhamento de um direito mantido pela seguridade social – SALÁRIO MATERNIDADE, a fim de oportunizar o recebimento de valores aproximadamente equivalentes a média aritmética simples das 12 (doze) ultimas remunerações, oficialmente obtidas em virtude do último contrato de emprego analítico analisado, multiplicando por 4 (quatro), executando-se para esse fim o 13º (décimo terceiro salário), salvo eventual mudança da legislação. Uma vez que, que não é permitido o valor obtido seja inferior ao salário mínimo, o mesmo será equipado ao salário mínimo vigente do ano base das remunerações utilizadas para o cálculo, mais a correção monetária. Sendo o benefício concedido, fica ciente o CONTRATANTE que o depósito será feito em uma agência bancária indicada pela previdência social.</p>
             <p class="mb-2"><strong>CLÁUSULA 2º:</strong> O CONTRATANTE deverá fornecer ao CONTRATADO todas as informações e documentos originais ou autenticados necessárias para a realização do serviço, havendo a garantia documentada de receber os documentos fornecidos nas mesmas condições em que se encontram no final da prestação do serviço.</p>
@@ -765,6 +807,8 @@ function getContratoProcuracaoHtml(client) {
         ${getSomenteContratoHtml(client)}
         <div class="document-section-break"></div>
         ${getProcuracaoHtml(client)}
+        <div class="document-section-break"></div>
+        ${getProcuracaoGeridHtml(client)}
     `;
 }
 
@@ -774,19 +818,19 @@ function getProcuracaoHtml(client) {
         <div>
             <h3 class="text-lg mb-4">PROCURAÇÃO - A CARGO DO INSS</h3>
             <p><strong>Nome completo do segurado/pensionista:</strong> ${client.nome_completo || ''}</p>
-            <p><strong>Nacionalidade:</strong> ${client.nacionalidade || 'Brasileira'}, <strong>Estado Civil:</strong> ${client.estado_civil || ''}, <strong>Profissão:</strong> ${client.profissao || ''}</p>
+            <p><strong>Nacionalidade:</strong> ${client.nacionalidade || 'brasileira'}, <strong>Estado Civil:</strong> ${client.estado_civil || ''}, <strong>Profissão:</strong> ${client.profissao || ''}</p>
             <p><strong>CPF:</strong> ${client.cpf || ''}</p>
             <p><strong>End.:</strong> ${enderecoCompleto}</p>
             <br>
             <p>Nomeia e constitui seu bastante procurador o(a) Sr.(a): <strong>Dirson Weiand</strong></p>
-            <p><strong>Profissão:</strong> Despachante previdenciário, <strong>Nacionalidade:</strong> Brasileiro, <strong>Estado Civil:</strong> Solteiro</p>
+            <p><strong>Profissão:</strong> Despachante previdenciário, <strong>Nacionalidade:</strong> brasileiro, <strong>Estado Civil:</strong> Solteiro</p>
             <p><strong>CPF:</strong> 925.484.070-04, <strong>RG:</strong> 1069806253, <strong>NIT:</strong> 126.29572.71.6</p>
-            <p>Rua Marcilio Dias, nº 1253 sala705, <strong>Bairro:</strong> Centro, <strong>Cidade:</strong> Novo Hamburgo, <strong>UF:</strong> RS</p>
+            <p>Rua Marcilio Dias, nº 1261 sala705, <strong>Bairro:</strong> Centro, <strong>Cidade:</strong> Novo Hamburgo, <strong>UF:</strong> RS</p>
             <br>
             <p>Nomeia e constitui seu bastante procurador o(a) Sr.(a): <strong>Giseli Ribeiro</strong></p>
             <p><strong>Profissão:</strong> Administrativo, <strong>Nacionalidade:</strong> Brasileira, <strong>Estado Civil:</strong> solteira</p>
             <p><strong>CPF:</strong> 962.685.900-82, <strong>RG:</strong> 9081845332</p>
-            <p>Rua Marcilio Dias, nº 1253 sala 705, <strong>Bairro:</strong> Centro, <strong>Cidade:</strong> Novo Hamburgo, <strong>UF:</strong> RS</p>
+            <p>Rua Marcilio Dias, nº 1261 sala 705, <strong>Bairro:</strong> Centro, <strong>Cidade:</strong> Novo Hamburgo, <strong>UF:</strong> RS</p>
             <br>
             <p>( &nbsp; ) Diversos ( X ) Requerer benefícios, revisão e interpor recursos: ( &nbsp; ) Ausente</p>
             <div style="margin-top: 2rem;">
@@ -808,3 +852,46 @@ function getProcuracaoHtml(client) {
         </div>
     `;
 }
+
+function getProcuracaoGeridHtml(client) {
+    const today = new Date();
+    const longFormattedDate = today.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const enderecoCompleto = `${client.endereco || ''}, nº ${client.numero || ''}, Bairro ${client.bairro || ''}, na cidade de ${client.cidade || ''}(${client.uf || ''})`;
+    const nacionalidade = client.nacionalidade || 'brasileira';
+
+    return `
+        <div>
+            <h3 class="text-lg mb-4" style="text-align: center; font-weight: bold;">P R O C U R A Ç Ã O</h3>
+            <p class="mb-2"><strong>OUTORGANTE:</strong> ${client.nome_completo || ''}, ${nacionalidade}, ${client.estado_civil || ''}, ${client.profissao || ''}, portadora da Carteira de Identidade nº ${client.rg || ''} e CPF nº ${client.cpf || ''}, residente e domiciliada na ${enderecoCompleto}.</p>
+            <p class="mb-2"><strong>OUTORGADO:</strong> Sr. Bel. JAIR JOÃO WOLFRAM, brasileiro, advogado, inscrito na OAB/RS sob os nº 35.765, com escritório profissional na Av. Nações Unidas, 2456, Centro, na cidade de Novo Hamburgo /RS.</p>
+            <p class="mb-2"><strong>FINALIDADE:</strong> poderes específicos para demandar JUNTO AO GERID OU OUTRA AÇÃO JUDICIAL E ADMINISTRATIVA NECESSÁRIA PARA ENCAMINHAMENTO DO PEDIDO DE AUXILIO MATERNIDADE, junto a Comarca e FORO eleito competente para o feito, bem como demais cominações legais pertinentes in casu.</p>
+            <p class="mb-2"><strong>PODERES:</strong> O Outorgante supra, nomeia e constitui seu bastante procurador, Outorgado supra, independente da ordem de nomeação, para o que outorga ao referido procurador os poderes contidos nas cláusulas “ad” e “extra judicia”, bem como os especiais de transigir e substabelecer, no todo ou em parte, com ou sem reservas, os poderes ora outorgados, podendo requerer o BENEFÍCIO DA ASSISTÊNCIA JUDICIÁRIA GRATUÍTA.</p>
+            <p class="text-right mt-6 mb-8">Novo Hamburgo(RS), ${longFormattedDate}.</p>
+            <div class="text-center mt-12">
+                <div class="signature-line w-3/4 mx-auto"></div>
+                <p class="mt-1 text-sm">OUTORGANTE</p>
+                <p class="mt-1 text-sm">${client.nome_completo || ''}</p>
+            </div>
+        </div>
+    `;
+}
+
+// --- CONTROLO DE FORMULÁRIO (TECLA ENTER) ---
+form.addEventListener('keydown', (e) => {
+    // Apenas atua na tecla enter e ignora textareas e botões
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit' && e.target.tagName !== 'BUTTON') {
+        e.preventDefault(); // Impede o envio do formulário
+        
+        // Encontra todos os elementos focáveis que estão visíveis e não desabilitados
+        const focusableElements = Array.from(
+            form.querySelectorAll('input:not([type="hidden"]), select, textarea')
+        ).filter(el => !el.disabled && el.offsetParent !== null);
+        
+        const currentIndex = focusableElements.indexOf(e.target);
+        const nextElement = focusableElements[currentIndex + 1];
+        
+        if (nextElement) {
+            nextElement.focus(); // Move o foco para o próximo elemento
+        }
+    }
+});
